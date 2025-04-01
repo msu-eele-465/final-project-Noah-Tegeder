@@ -8,15 +8,16 @@
 
 The goal of this project is to create a small, portable weather station that measures temperature, wind speed, and humidity. The data it measures will be displayed on the LCD screen and the LED bar will display the level of either the humidity or wind speed, with zero LEDs turned on indicating low levels, and all LEDs turned on indicating very high levels. The system will be controlled with a HC-05 bluetooth module that connects to the users cell phone and will interface with the MSP430FR355 through UART.
 The wind speed will be measured using an Adafruit anemometer wind speed sensor, which outputs an analog voltage that can be analyzed using the ADC on the MSP430. An external power source will need to be found, as the anemometer requires at least 7 volts. The humidity will be measured by an Adafruit AM2320 sensor, which will interface with the MSP430FR2355 using I2C. The temperature will by measured using a Mouser LM19CIZ/NOPB temperature sensor which, like the anemometer, will be analyzed with the ADC on the MSP430FR2355. The controller will take all the weather measurements and will act as the I2C master to two MSP430FR2310 microcontrollers that will each control either the LCD or the LED bar. The bluetooth module will output the data to the users device, and will also act as an input for the user to control what measurement they wish to display on the LCD, LED bar, or mobile device.
+
 ## Hardware Setup
 
-What hardware will you require? Provide a conceptual circuit diagram and/or block diagram to help the reviewers understand your proposal. Be sure to introduce and discuss your figures in the text.
 The anemometer, the humidity sensor, and the bluetooth module are the new hardware items. The circuit will be relatively simple, as all the new hardware items will connect to the master, the MSP430FR2355, which will then connect to two MSP430FR2310 slaves which will control the LCD and LED bar.
+![Preliminary circuit diagram.](prelim_circuit_diagram.png)
 
 ## Software overview
 
-Discuss, at a high level, a concept of how your code will work. Include a *high-level* flowchart. This is a high-level concept that should concisely communicate the project's concept.
 The system will start out idle, and will only output or display data when commanded to by way of the bluetooth module. There will be interrupts for the UART communication, and there will be two separate I2C instances to control the slaves and the humidity sensor respectively. The anemometer analog output will be sampled by the master's ADC, with a fixed window. There will be a series of commands that the user can input through a bluetooth terminal app to the bluetooth module that will determine what data to return/display.
+![Preliminary software architecture](prelim_software_flow.png)
 
 ## Testing Procedure
 
