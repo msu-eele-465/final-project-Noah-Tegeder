@@ -1,30 +1,61 @@
 #include "intrinsics.h"
-#include "msp430fr2355.h"
 #include <msp430.h>
+
+void Init_GPIO();
+char message[] = "Hello World";
+unsigned int pos = 0;
 
 int main(void)
 {
-    WDTCTL= WDTPW | WDTHOLD;
+    WDTCTL = WDTPW | WDTHOLD;                 // Stop watchdog timer
 
-    UCA0CTLW0 |= UCSWRST;
-    UCA0CTLW0 |= UCSSEL__ACLK;
+    P2DIR |= BIT7;
+    P2OUT &= ~BIT7;
 
-    UCA0BRW = 3;
-    UCA0MCTLW |= 0x9200;
+    PM5CTL0 &= ~LOCKLPM5;                     // Disable the GPIO power-on default high-impedance mode
+                                            // to activate 1previously configured port settings
 
-    P1SEL1 &= ~BIT6;
-    P1SEL0 |= BIT6;
-    P1SEL1 &= ~BIT7;
-    P1SEL0 |= BIT7;
+    // Configure UART pins
+    P4SEL1 &= ~BIT3;
+    P4SEL1 &= ~BIT2;
+    P4SEL0 |= BIT2 | BIT3;                    // set 2-UART pin as second function
 
-    PM5CTL0 &= ~LOCKLPM5;
+    // Configure UART
+    UCA1CTLW0 |= UCSWRST;
+    UCA1CTLW0 |= UCSSEL__ACLK;                    // set ACLK as BRCLK
 
-    UCA0CTLW0 &= ~UCSWRST;
+    UCA1BRW = 3;                              // INT(32768/4800)
+    UCA1MCTLW = 0x9200;
+
+    UCA1CTLW0 &= ~UCSWRST;                    // Initialize eUSCI
+    UCA1IE |= UCRXIE;                         // Enable USCI_A1 RX interrupt
+    __no_operation();                         // For debugger
+    __enable_interrupt();
 
     while(1)
     {
-        UCA0TXBUF = 'A';
-        __delay_cycles(10000);
     }
-
 }
+
+
+#pragma vector=EUSCI_A1_VECTOR
+__interrupt void EUSCI_A1_RX_ISR(void)
+{
+    if(UCA1RXBUF == 't')
+    {
+        pos = 0;
+        P2OUT ^= BIT7;
+        //UCA1IE |= UCTXIE;
+        //UCA1TXBUF = message[pos++];
+    }
+    //UCA1IFG &= ~UCTXCPTIFG;
+}
+/*
+__interrupt void EUSCI_A1_TX_ISR(void)
+{
+    UCA1TXBUF = message[pos++];
+    if(pos == sizeof(message)-1)
+    {
+        UCA1IE &= ~UCTXIE;
+    }
+}*/
