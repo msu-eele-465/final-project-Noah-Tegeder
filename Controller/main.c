@@ -43,19 +43,11 @@ __interrupt void EUSCI_A1_RX_ISR(void)
 {
     if(UCA1RXBUF == 't')
     {
-        pos = 0;
+
         P2OUT ^= BIT7;
-        //UCA1IE |= UCTXIE;
-        //UCA1TXBUF = message[pos++];
+        UCA1TXBUF = message[pos++];
     }
-    //UCA1IFG &= ~UCTXCPTIFG;
+    UCA1IFG &= ~UCRXIFG;
+    UCA1IFG &= ~UCTXCPTIFG;
 }
-/*
-__interrupt void EUSCI_A1_TX_ISR(void)
-{
-    UCA1TXBUF = message[pos++];
-    if(pos == sizeof(message)-1)
-    {
-        UCA1IE &= ~UCTXIE;
-    }
-}*/
+
