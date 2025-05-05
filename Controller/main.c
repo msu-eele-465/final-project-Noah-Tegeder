@@ -8,11 +8,13 @@ void i2c_config();
 void uart_config();
 void recieve_humidity();
 void recieve_temp();
+void send_temp();
 void humidity_command();
 void send_humidity();
 void recieve_wind();
 
 const char hString[] = "Humidity: ";
+const char tString[] = "Temperature: ";
 char i2c_source;
 unsigned char data = 0;
 
@@ -40,6 +42,7 @@ int real_plant;
 int avg_plant;
 int k = 0;
 int plant[];
+int temp_status = 0;
 
 int main(void)
 {
@@ -49,7 +52,7 @@ int main(void)
     P2OUT &= ~BIT7;
 
     i2c_config();
-    //timer_setup();
+    timer_setup();
     //adc_config();
 
     PM5CTL0 &= ~LOCKLPM5;                     // Disable the GPIO power-on default high-impedance mode
@@ -72,12 +75,17 @@ int main(void)
         }
         if(recieve == 't')
         {
-            recieve_temp();
+            send_temp();
             recieve = 0;
         }
         if(recieve == 'w')
         {
             //recieve_wind();
+        }
+        if(temp_status = 1)
+        {
+            recieve_temp();
+            temp_status = 0;
         }
     }
 }
@@ -123,16 +131,6 @@ __interrupt void EUSCI_B0_I2C_ISR(void){
                                     plant_out = plant_out >> 3;
                                     plant_temp = plant_out * .0625;
                                     real_plant = 100*plant_temp;
-                                    if(k != 4)
-                                    {
-                                        plant[k] = real_plant;
-                                    }
-                                    else if(k == 4){
-                                        k = 0;
-                                        plant[0] = real_plant;
-                                    }
-                                    k++;
-                                    avg_plant = (plant[0] + plant[1] + plant[2] + plant[3])/4;
                                 }
                             }
                             else if(i2c_source == 'H')
@@ -241,6 +239,7 @@ void __attribute__ ((interrupt(ADC_VECTOR))) ADC_ISR (void)
             break;
     }
 }
+*/
 // Timer B0 interrupt service routine
 #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
 #pragma vector = TIMER0_B0_VECTOR
@@ -251,9 +250,10 @@ void __attribute__ ((interrupt(TIMER0_B0_VECTOR))) Timer_B (void)
 #error Compiler not supported!
 #endif
 {
-    ADCCTL0 |= ADCENC | ADCSC;                                    // Sampling and conversion start
+    temp_status = 1;
+    //ADCCTL0 |= ADCENC | ADCSC;                                    // Sampling and conversion start
 }
-*/
+
 
 void i2c_config()
 {
@@ -401,4 +401,58 @@ void send_humidity()
     __delay_cycles(1000);
     UCA1TXBUF = '\n';
     __delay_cycles(1000);
+}
+
+void send_temp()
+{   
+    UCB0I2CSA = 0x0B;
+    real_plant = 100*plant_temp;
+    thousands = (real_plant/1000) + 48;
+    real_plant %= 1000;
+    hundreds = (real_plant/100) + 48;
+    real_plant %= 100;
+    tens = (real_plant/10) + 48; 
+    ones = (real_plant%10) + 48;
+
+    int i = 0;
+    for(i = 0; i<sizeof(tString);i++)
+    {
+        UCA1TXBUF = tString[i];
+        __delay_cycles(1000);
+    }
+    UCA1TXBUF = thousands;
+    __delay_cycles(10000);
+    UCA1TXBUF = hundreds;
+    __delay_cycles(10000);
+    UCA1TXBUF = '.';
+    __delay_cycles(10000);
+    UCA1TXBUF = tens;
+    __delay_cycles(10000);
+    UCA1TXBUF = ones;
+    __delay_cycles(10000);
+    UCA1TXBUF = 'C';
+    __delay_cycles(10000);
+    UCA1TXBUF = '\n';
+    __delay_cycles(10000);
+
+    data = 0xAC;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = thousands;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = hundreds;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = 0b00101110;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = tens;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
 }
