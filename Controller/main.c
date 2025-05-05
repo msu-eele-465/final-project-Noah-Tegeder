@@ -401,6 +401,27 @@ void send_humidity()
     __delay_cycles(1000);
     UCA1TXBUF = '\n';
     __delay_cycles(1000);
+
+    data = 0xAD;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = thousands;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = hundreds;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = 0b00101110;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = tens;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
 }
 
 void send_temp()
