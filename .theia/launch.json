@@ -9,6 +9,15 @@
                 "name": "Controller",
                 "resourceId": "/Controller"
             }
+        },
+        {
+            "name": "lcd",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "lcd",
+                "resourceId": "/lcd"
+            }
         }
     ]
 }

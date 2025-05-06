@@ -373,6 +373,7 @@ void humidity_command()
 
 void send_humidity()
 {
+    UCB0I2CSA = 0x0B;
     int i = 0;
     for(i = 0; i<sizeof(h_string);i++)
     {
@@ -507,8 +508,8 @@ void send_wind()
     __delay_cycles(10000);
     UCA1TXBUF = '\n';
     __delay_cycles(10000);
-    /*
-    data = 0xAC;
+    
+    data = 0xAB;
     UCB0CTLW0 |= UCTXSTT;
     while (UCB0CTL1 & UCTXSTP);
     __delay_cycles(2000);
@@ -520,7 +521,7 @@ void send_wind()
     UCB0CTLW0 |= UCTXSTT;
     while (UCB0CTL1 & UCTXSTP);
     __delay_cycles(2000);
-    data = 0b00101110;
+    data = '.';
     UCB0CTLW0 |= UCTXSTT;
     while (UCB0CTL1 & UCTXSTP);
     __delay_cycles(2000);
@@ -528,5 +529,5 @@ void send_wind()
     UCB0CTLW0 |= UCTXSTT;
     while (UCB0CTL1 & UCTXSTP);
     __delay_cycles(2000);
-    */
+    
 }
