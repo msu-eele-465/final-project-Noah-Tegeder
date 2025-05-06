@@ -11,10 +11,11 @@ void recieve_temp();
 void send_temp();
 void humidity_command();
 void send_humidity();
-void recieve_wind();
+void send_wind();
 
-const char hString[] = "Humidity: ";
-const char tString[] = "Temperature: ";
+const char h_string[] = "Humidity: ";
+const char t_string[] = "Temperature: ";
+const char w_string[] = "Wind Speed: ";
 char i2c_source;
 unsigned char data = 0;
 
@@ -44,6 +45,12 @@ int k = 0;
 int plant[];
 int temp_status = 0;
 
+// Variables for wind speed measurement
+float adc_result;
+float calc;
+float wind_speed;
+int real_wind;
+
 int main(void)
 {
     WDTCTL = WDTPW | WDTHOLD;                 // Stop watchdog timer
@@ -53,7 +60,7 @@ int main(void)
 
     i2c_config();
     timer_setup();
-    //adc_config();
+    adc_config();
 
     PM5CTL0 &= ~LOCKLPM5;                     // Disable the GPIO power-on default high-impedance mode
                                             // to activate 1previously configured port settings
@@ -80,7 +87,8 @@ int main(void)
         }
         if(recieve == 'w')
         {
-            //recieve_wind();
+            send_wind();
+            recieve = 0;
         }
         if(temp_status = 1)
         {
@@ -191,7 +199,7 @@ __interrupt void EUSCI_B0_I2C_ISR(void){
     default: break;
   }
 }
-/*
+
 // ADC interrupt service routine
 #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
 #pragma vector=ADC_VECTOR
@@ -203,7 +211,7 @@ void __attribute__ ((interrupt(ADC_VECTOR))) ADC_ISR (void)
 #endif
 {
     calc = 0;
-    ADC_Result = 0;
+    adc_result = 0;
     switch(__even_in_range(ADCIV,ADCIV_ADCIFG))
     {
         case ADCIV_NONE:
@@ -219,27 +227,17 @@ void __attribute__ ((interrupt(ADC_VECTOR))) ADC_ISR (void)
         case ADCIV_ADCINIFG:
             break;
         case ADCIV_ADCIFG:
-            ADC_Result = ADCMEM0;
-            calc = (ADC_Result*3.3)/4096;
-            ambient_temp = (calc-1.8663)/(-0.01169);
-            real_temp = 100*ambient_temp;
-            if(n != 4)
-            {
-                ambient[n] = real_temp;
-            }
-            else if(n == 4){
-                n = 0;
-                ambient[0] = real_temp;
-            }
-            n++;
-            avg_ambient = (ambient[0] + ambient[1] + ambient[2] + ambient[3])/4;
+            adc_result = ADCMEM0;
+            calc = (adc_result*3.3)/4096;
+            wind_speed = (calc-.4)*20.25;
+            real_wind = 100*wind_speed;
             __bic_SR_register_on_exit(LPM0_bits);            // Clear CPUOFF bit from LPM0          
             break;
         default:
             break;
     }
 }
-*/
+
 // Timer B0 interrupt service routine
 #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
 #pragma vector = TIMER0_B0_VECTOR
@@ -251,7 +249,7 @@ void __attribute__ ((interrupt(TIMER0_B0_VECTOR))) Timer_B (void)
 #endif
 {
     temp_status = 1;
-    //ADCCTL0 |= ADCENC | ADCSC;                                    // Sampling and conversion start
+    ADCCTL0 |= ADCENC | ADCSC;                                    // Sampling and conversion start
 }
 
 
@@ -375,10 +373,11 @@ void humidity_command()
 
 void send_humidity()
 {
+    UCB0I2CSA = 0x0B;
     int i = 0;
-    for(i = 0; i<sizeof(hString);i++)
+    for(i = 0; i<sizeof(h_string);i++)
     {
-        UCA1TXBUF = hString[i];
+        UCA1TXBUF = h_string[i];
         __delay_cycles(1000);
     }
     thousands = (real_humidity/1000) + 48;
@@ -436,9 +435,9 @@ void send_temp()
     ones = (real_plant%10) + 48;
 
     int i = 0;
-    for(i = 0; i<sizeof(tString);i++)
+    for(i = 0; i<sizeof(t_string);i++)
     {
-        UCA1TXBUF = tString[i];
+        UCA1TXBUF = t_string[i];
         __delay_cycles(1000);
     }
     UCA1TXBUF = thousands;
@@ -476,4 +475,59 @@ void send_temp()
     UCB0CTLW0 |= UCTXSTT;
     while (UCB0CTL1 & UCTXSTP);
     __delay_cycles(2000);
+}
+
+void send_wind()
+{   
+    UCB0I2CSA = 0x0B;
+    thousands = (real_wind/1000) + 48;
+    real_wind %= 1000;
+    hundreds = (real_wind/100) + 48;
+    real_wind %= 100;
+    tens = (real_wind/10) + 48; 
+
+    int i = 0;
+    for(i = 0; i<sizeof(w_string);i++)
+    {
+        UCA1TXBUF = w_string[i];
+        __delay_cycles(1000);
+    }
+    UCA1TXBUF = thousands;
+    __delay_cycles(10000);
+    UCA1TXBUF = hundreds;
+    __delay_cycles(10000);
+    UCA1TXBUF = '.';
+    __delay_cycles(10000);
+    UCA1TXBUF = tens;
+    __delay_cycles(10000);
+    UCA1TXBUF = 'm';
+    __delay_cycles(10000);
+    UCA1TXBUF = '/';
+    __delay_cycles(10000);
+    UCA1TXBUF = 's';
+    __delay_cycles(10000);
+    UCA1TXBUF = '\n';
+    __delay_cycles(10000);
+    
+    data = 0xAB;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = thousands;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = hundreds;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = '.';
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    data = tens;
+    UCB0CTLW0 |= UCTXSTT;
+    while (UCB0CTL1 & UCTXSTP);
+    __delay_cycles(2000);
+    
 }
